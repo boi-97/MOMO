@@ -1,0 +1,112 @@
+整理数据
+
+1. 矩阵（年 x 12月）格式转换成时间序列（时间：当期数据）
+源数据格式：[Year,Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec; 1996,data,data...data; 1997 data,data,..,data; ...;2023,data..,data]
+
+详细步骤和解释：
+读取数据：使用pandas读取包含年份和月份数据的CSV文件。
+转换数据格式：使用pd.melt将宽格式数据转换为长格式，其中年份保持不变，月份变为变量列，通胀数据变为值列。
+创建日期标签列：将年份和月份合并成一个新的列DateLabel，格式为"YYYYMon"。
+将月份转换为数字：创建一个字典，将月份缩写映射到对应的数字，以便于日期排序。
+创建完整的日期列：使用年份和数字月份创建一个完整的日期列，以便排序。
+按日期排序：根据完整的日期列对数据进行排序。
+删除不需要的列：删除原来的“Year”、“Month”、“MonthNum”和完整日期列，只保留日期标签和通胀数据列。
+设置日期标签为索引：将新的日期标签列设置为DataFrame的索引。
+显示和保存：打印前几行数据以检查，最后将转换后的数据保存为一个新的CSV文件。
+
+开始：
+
+import pandas as pd
+
+# 读取数据，将文件名替换成需要整理的文件名
+data = pd.read_csv('inflation_data_matrix.csv')
+
+# 将数据从宽格式转换为长格式
+data_long = pd.melt(data, id_vars=['Year'], var_name='Month', value_name='Inflation')
+
+# 创建一个日期标签列
+data_long['DateLabel'] = data_long['Year'].astype(str) + data_long['Month']
+
+# 将月份转换为数字
+month_map = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+             'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
+data_long['MonthNum'] = data_long['Month'].map(month_map)
+
+# 创建一个完整的日期列用于排序
+data_long['Date'] = pd.to_datetime(data_long['Year'].astype(str) + data_long['MonthNum'], format='%Y%m')
+
+# 按日期排序
+data_long.sort_values(by='Date', inplace=True)
+
+# 删除不需要的列
+data_long.drop(columns=['Year', 'Month', 'MonthNum', 'Date'], inplace=True)
+
+# 设置日期标签为索引
+data_long.set_index('DateLabel', inplace=True)
+
+# 显示前几行
+print(data_long.head())
+
+# 保存为新的CSV文件
+data_long.to_csv('inflation_time_series_sorted.csv')
+
+
+2. monthly data to quarterly
+Function: Quarterly inflation = ((Monthly inflation_t + 1)*(Monthly inflation_t+1 +1)*(Monthly inflation_t+2 +1) - 1)
+源数据格式：[date,inflation; 1996-01,data;1996-02,data;......;2023-12,data]
+
+详细步骤和解释：
+读取数据：使用pandas读取包含月度通胀数据的CSV文件。
+确保日期列为datetime类型：使用pd.to_datetime将日期列转换为datetime类型，以便进行时间序列操作。
+设置日期为索引：将日期列设置为DataFrame的索引。
+确保通胀率以百分比形式表示：将通胀数据除以100，将百分比形式转换为小数形式。若数据为小数，则无需此步骤。# data['Inflation'] = data['Inflation'] / 100
+定义计算季度通胀的函数：定义一个函数，计算每个季度的通胀率。
+按季度重新采样并应用函数：使用resample方法按季度重新采样数据，并应用定义的函数计算季度通胀率。
+重置索引：将索引重置为默认的整数索引，同时保留日期列。
+显示和保存：打印前几行数据以检查，最后将转换后的季度通胀数据保存为一个新的CSV文件。
+
+开始：
+
+import pandas as pd
+
+# 读取数据
+data = pd.read_csv('monthly_inflation_data.csv')
+
+# 确保日期列为datetime类型
+data['Date'] = pd.to_datetime(data['Date'])
+
+# 设置日期为索引
+data.set_index('Date', inplace=True)
+
+# 定义计算季度通胀的函数
+def calculate_quarterly_inflation(group):
+    quarterly_inflation = (1 + group).prod() - 1
+    return quarterly_inflation
+
+# 按季度重新采样并应用函数
+quarterly_data = data.resample('QE').apply(calculate_quarterly_inflation)
+
+# 重置索引
+quarterly_data.reset_index(inplace=True)
+
+# 显示前几行
+print(quarterly_data.head())
+
+# 保存为新的CSV文件
+quarterly_data.to_csv('quarterly_inflation_data.csv', index=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
