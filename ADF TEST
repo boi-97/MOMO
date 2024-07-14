@@ -1,0 +1,117 @@
+可设置parameter的ADF test
+数据类型：date x data
+
+成果示例：
+Money growth rate
+ADF Test Results:
+Statistic: -1.758958056404137
+p-value: 0.40101970097399936
+Number of lags used: 13
+Number of observations: 100
+Critical Values:
+   1%: -3.497501033
+   5%: -2.89090644
+   10%: -2.5824349
+IC Best: -412.25886485228307
+Data is NOT stationary. Differencing needed.
+Differenced data saved to quarterly_money_growth_differenced.csv
+
+Differenced ADF Test Results:
+Statistic: -4.268826594981773
+p-value: 0.0005027889338148865
+Number of lags used: 12
+Number of observations: 100
+Critical Values:
+   1%: -3.497501033
+   5%: -2.89090644
+   10%: -2.5824349
+IC Best: -406.61838624164693
+
+ADF Test Parameters:
+maxlag: None
+regression: 'c'
+autolag: 'AIC'
+store: False
+regresults: False
+
+进程已结束，退出代码为 0
+
+#！！！！！！！开始：
+
+import pandas as pd
+from statsmodels.tsa.stattools import adfuller
+import os
+
+# 读取已清理的季节性调整后的数据 access to seasonally adjusted data
+file_path = 'quarterly_real_gdp.csv'                               # ！！！修改正确的路径！！！
+data = pd.read_csv(file_path, parse_dates=['Date'], index_col='Date')       
+
+# 使用实际列名 read the real column name
+data_column = 'Real GDP' # use real column instead 'Real GDP'      # ！！！修改正确的数据标头！！！
+
+# ADF检验的输入参数
+maxlag = None
+regression = 'c'
+autolag = 'AIC'
+store = False
+regresults = False                                                  # ！！！输入想用的参数！！！
+
+# 平稳性检测，显示ADF检验的全部参数和结果 ADF TEST,show all ADF parameters and results
+adf_result = adfuller(data[data_column], maxlag=maxlag, regression=regression, autolag=autolag, store=store, regresults=regresults)
+
+# 打印ADF检验的全部参数和结果 print out ADF test parameters and results
+print(data_column)
+print("ADF Test Results:")
+print(f'Statistic: {adf_result[0]}')
+print(f'p-value: {adf_result[1]}')
+print(f'Number of lags used: {adf_result[2]}')
+print(f'Number of observations: {adf_result[3]}')
+print('Critical Values:')
+for key, value in adf_result[4].items():
+    print(f'   {key}: {value}')
+print(f'IC Best: {adf_result[5]}')
+
+# 如果数据不平稳，进行一阶差分并保存结果到新CSV文件
+# If the data is stationary, print ""Data is already stationary. No differencing needed.""
+# If the data is NOT stationary, print "Data is NOT stationary. Differencing needed."
+
+if adf_result[1] > 0.05:
+    print("Data is NOT stationary. Differencing needed.")
+    # If the data is NOT stationary, print "Data is NOT stationary. Differencing needed."
+    data['Diff_DATA'] = data[data_column].diff().dropna()
+
+    # 获取原文件名（不含路径）
+    base_name = os.path.basename(file_path)
+    # 获取文件名和扩展名
+    file_name, file_extension = os.path.splitext(base_name)
+    # 生成新文件名
+    new_file_name = f"{file_name}_differenced{file_extension}"
+
+    # 保存差分后的数据到新文件
+    data['Diff_DATA'].dropna().to_csv(new_file_name)
+
+    print(f"Differenced data saved to {new_file_name}")
+    adf_result_diff = adfuller(data['Diff_DATA'].dropna(), maxlag=maxlag, regression=regression, autolag=autolag, store=store, regresults=regresults)
+    # than redo the ADF test
+
+    # 打印差分后的ADF检验结果 print NEW result of ADF with differnced data)
+    print("\nDifferenced ADF Test Results:")
+    print(f'Statistic: {adf_result_diff[0]}')
+    print(f'p-value: {adf_result_diff[1]}')
+    print(f'Number of lags used: {adf_result_diff[2]}')
+    print(f'Number of observations: {adf_result_diff[3]}')
+    print('Critical Values:')
+    for key, value in adf_result_diff[4].items():
+        print(f'   {key}: {value}')
+    print(f'IC Best: {adf_result_diff[5]}')
+
+else:
+    print("Data is already stationary. No differencing needed.")
+
+# 打印ADF函数的所有参数 print all parameters involved in ADF TEST
+print("\nADF Test Parameters:")
+print(f"maxlag: {maxlag}")
+print(f"regression: '{regression}'")
+print(f"autolag: '{autolag}'")
+print(f"store: {store}")
+print(f"regresults: {regresults}")
